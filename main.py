@@ -4,19 +4,27 @@ import os
 import numpy as np     
 from sklearn.linear_model import LinearRegression 
 from sklearn.metrics import mean_squared_error    
-import matplotlib.pyplot as plt                   
+import matplotlib.pyplot as plt           
+import pyttsx3
 from dotenv import load_dotenv                    
 
 load_dotenv()
 API_KEY = os.getenv("OPENWEATHER_API_KEY") 
 
 # CAVITE 
-LAT = 14.4791
+LAT = 14.5995
 LON = 120.8970
 
 end_date = datetime.date.today() - datetime.timedelta(days=1)  # Yesterday
 start_date = end_date - datetime.timedelta(days=6)             # 7 days before yesterday
-today = datetime.date.today()                                  # Today's date
+today = datetime.date.today()      
+
+engine = pyttsx3.init()
+
+def speak(text, rate = 145): #voice speed
+    engine.setProperty('rate',rate)
+    engine.say(text)
+    engine.runAndWait()
 
 def get_historical_weather(lat, lon, start, end):
     """Fetch historical weather data for the specified date range and location"""
@@ -144,6 +152,7 @@ def main():
     # FETCH CURRENT WEATHER DATA TODAY 
     today_temp, today_min, today_max, today_desc = get_today_weather(LAT, LON)
     if today_temp is not None:
+        speak(f"Today's weather is {today_desc} with a temperature of {today_temp:.2f}°C.")
         print(f"\n📊 Today's Weather ({today.isoformat()}):")
         print(f"Temperature: {today_temp:.2f}°C (Min: {today_min:.2f}°C, Max: {today_max:.2f}°C)")
         print(f"Condition: {today_desc}")
@@ -152,11 +161,13 @@ def main():
     predictions, conf_interval = predict_next_days(dates, temps)
 
     # DISPLAY PREDICTIONS WITH CONFIDENCE RATE 
+    speak("The predicted temperatures for the next 7 days are as follows:")
     print("\n🔮 Predicted Next 7 Days Temperature (with 98% confidence):")
     for i, temp in enumerate(predictions):
         date = (end_date + datetime.timedelta(days=i+1)).isoformat()
         print(f"{date}: {temp:.2f}°C (± {abs(conf_interval[0][i] - temp):.2f})")
 
+    speak("This is the data visualization temperature prediction for the next few days")
     plot_next_day_fluctuation(predictions, conf_interval)
 
 if __name__ == "__main__":
