@@ -144,6 +144,74 @@ def plot_next_day_fluctuation(prediction, conf_interval):
     
     plt.show()
 
+def generate_weather_description(predictions, today_desc=None):
+    """Generate descriptive forecasts based on temperature predictions"""
+    descriptions = []
+    
+    # Temperature thresholds (adjust for your region)
+    cold_threshold = 18
+    cool_threshold = 24
+    warm_threshold = 30
+    hot_threshold = 35
+    
+    # Calculate temperature trends
+    trends = []
+    for i in range(1, len(predictions)):
+        diff = predictions[i] - predictions[i-1]
+        if diff > 1.0:
+            trends.append("rising")
+        elif diff < -1.0:
+            trends.append("falling")
+        else:
+            trends.append("stable")
+    trends.insert(0, "initial")  # No trend for first day
+    
+    # Generate descriptions for each day
+    for i, temp in enumerate(predictions):
+        temp_desc = ""
+        if temp < cold_threshold:
+            temp_desc = "cold"
+        elif temp < cool_threshold:
+            temp_desc = "cool"
+        elif temp < warm_threshold:
+            temp_desc = "warm"
+        elif temp < hot_threshold:
+            temp_desc = "hot"
+        else:
+            temp_desc = "very hot"
+            
+        trend_text = ""
+        if i > 0:
+            if trends[i] == "rising":
+                trend_text = "warmer than previous day"
+            elif trends[i] == "falling":
+                trend_text = "cooler than previous day"
+            else:
+                trend_text = "similar to previous day"
+        
+        # First day prediction often based on current conditions
+        if i == 0 and today_desc:
+            conditions = today_desc.lower()
+            if "cloud" in conditions:
+                forecast = f"Expect {temp_desc} temperatures with continued cloud cover"
+            elif "rain" in conditions or "shower" in conditions:
+                forecast = f"Expect {temp_desc} temperatures with a chance of continued rain"
+            elif "clear" in conditions or "sun" in conditions:
+                forecast = f"Expect {temp_desc} temperatures with continued sunshine"
+            else:
+                forecast = f"Expect {temp_desc} temperatures"
+        else:
+            if temp_desc in ["hot", "very hot"]:
+                forecast = f"Expect a {temp_desc} day, {trend_text}. Stay hydrated and use sun protection"
+            elif temp_desc == "warm":
+                forecast = f"Expect a pleasant {temp_desc} day, {trend_text}"
+            else:
+                forecast = f"Expect a {temp_desc} day, {trend_text}. Consider bringing a jacket"
+                
+        descriptions.append(forecast)
+    
+    return descriptions
+
 def main():
     """Main function to orchestrate the weather forecast application"""
     # FETCH WEATHER DATA 
@@ -159,15 +227,30 @@ def main():
     
     # GENERATE PREDICTIONS FOR NEXT 7 DAYS
     predictions, conf_interval = predict_next_days(dates, temps)
+    
+    # Generate weather descriptions
+    weather_descriptions = generate_weather_description(predictions, today_desc)
 
-    # DISPLAY PREDICTIONS WITH CONFIDENCE RATE 
+    # DISPLAY PREDICTIONS WITH CONFIDENCE RATE AND DESCRIPTIONS
     speak("The predicted temperatures for the next 7 days are as follows:")
-    print("\n🔮 Predicted Next 7 Days Temperature (with 98% confidence):")
-    for i, temp in enumerate(predictions):
+    print("\n🔮 Predicted Next 7 Days Weather Forecast (with 98% confidence):")
+    for i, (temp, description) in enumerate(zip(predictions, weather_descriptions)):
         date = (end_date + datetime.timedelta(days=i+1)).isoformat()
         print(f"{date}: {temp:.2f}°C (± {abs(conf_interval[0][i] - temp):.2f})")
+        print(f"   📝 {description}")
+        
+        # Speak the description for the next day only to avoid too much speech
+        if i == 0:
+            speak(f"Tomorrow's forecast: {description}")
+    
+    # Summarize the week trend
+    avg_temp = sum(predictions) / len(predictions)
+    temp_trend = "warming" if predictions[-1] > predictions[0] else "cooling"
+    week_summary = f"\n📅 Weekly Overview: Overall {temp_trend} trend with an average temperature of {avg_temp:.1f}°C"
+    print(week_summary)
+    speak(f"For the week ahead, expect a {temp_trend} trend with an average temperature of {avg_temp:.1f} degrees Celsius.")
 
-    speak("This is the data visualization temperature prediction for the next few days")
+    speak("This is the data visualization temperature prediction for tomorrow")
     plot_next_day_fluctuation(predictions, conf_interval)
 
 if __name__ == "__main__":
